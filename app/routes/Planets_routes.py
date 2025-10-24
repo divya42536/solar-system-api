@@ -25,7 +25,6 @@ def create_planet():
     return response, 201
 
 
-
 @Planets_bp.get("")
 def get_all_planets():
     query = db.select(Planets).order_by(Planets.id)
