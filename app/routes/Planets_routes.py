@@ -1,4 +1,4 @@
-from flask import Blueprint , abort , make_response , request
+from flask import Blueprint , abort , make_response , request, Response
 from app.models.Planets import Planets 
 from ..db import db
 
@@ -42,41 +42,54 @@ def get_all_planets():
             )
     return Planets_response
 
+def validate_planet(id):
+    try:
+        id = int(id)
+    except:
+        response = {"message": f"planet {id} invalid"}
+        abort(make_response(response, 400))
 
-# # def validate_planet(id):
-# #     try:
-# #         id = int(id)
-# #     except:
-# #         response = {"message": f"planet {id} invalid"}
-# #         abort(make_response(response, 400))
+    query = db.select(Planets).where(Planets.id == id)
+    planet = db.session.scalar(query)
 
-# #     for planet in planets:
-# #         if planet.id == id:
-# #             return planet
+    if not planet:
+        response = {"message": f"planet {id} not found"}
+        abort(make_response(response, 404))
+    # for planet in Planets:
+    #     if planet.id == id:
+    return planet
 
-# #     response = {"message": f"planet {id} not found"}
-# #     abort(make_response(response, 404))
-
-# # @Planets_bp.get("")
-# # def get_all_Planets():
+    # response = {"message": f"planet {id} not found"}
+    # abort(make_response(response, 404))
     
-# #     Planet_response = []
-# #     for Planet in planets:
-# #         Planet_response.append({
-# #             "id" : Planet.id , 
-# #             "name":Planet.name,
-# #             "description" : Planet.description , 
-# #             "atmosphere":Planet.atmosphere
-# #         })
+@Planets_bp.get("/<planet_id>")
+def get_one_planet(planet_id):
+    planet = validate_planet(planet_id)
 
-# #     return Planet_response
-# # @Planets_bp.get("/<id>")
-# # def get_one_Planet(id):
-# #     planet = validate_planet(id)
-# #     return {
-# #             "id" : planet.id , 
-# #             "name":planet.name,
-# #             "description" : planet.description , 
-# #             "atmosphere":planet.atmosphere
-# #             }
+    return {
+        "id": planet.id,
+        "name": planet.name,
+        "description": planet.description,
+        "atmosphere": planet.atmosphere
+    }
 
+@Planets_bp.put("/<id>")
+def replace_planet(id):
+    planet = validate_planet(id)
+
+    request_body = request.get_json()
+    planet.name = request_body["name"]
+    planet.description = request_body["description"]
+    planet.atmosphere = request_body["atmosphere"]
+
+    db.session.commit()
+    return Response(status = 204 , mimetype = "application/json")
+
+@Planets_bp.delete("/<id>")
+def delete_planet(id):
+    planet = validate_planet(id)
+
+    db.session.delete(planet)
+    db.session.commit()
+
+    return Response(status = 204 , mimetype = "application/json")
