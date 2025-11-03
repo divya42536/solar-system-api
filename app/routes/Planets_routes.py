@@ -1,31 +1,29 @@
 from flask import Blueprint , abort , make_response , request, Response
 from app.models.Planets import Planets 
 from ..db import db
+from app.routes.routes_utilities import validate_model
 
-Planets_bp = Blueprint("Planets_bp", __name__, url_prefix="/planets")
+bp = Blueprint("Planets_bp", __name__, url_prefix="/planets")
 
 
-@Planets_bp.post("")
+@bp.post("")
 def create_planet():
     request_body = request.get_json()
-    name = request_body["name"]
-    description = request_body["description"]
-    atmosphere = request_body["atmosphere"]
 
-    new_planet = Planets(name=name, description=description, atmosphere = atmosphere)
+    new_planet = Planets.from_dict(request_body)
     db.session.add(new_planet)
     db.session.commit()
 
-    response = {
-        "id": new_planet.id,
-        "name": new_planet.name,
-        "description": new_planet.description,
-        "atmosphere" : new_planet.atmosphere
-    }
-    return response, 201
+    # response = {
+    #     "id": new_planet.id,
+    #     "name": new_planet.name,
+    #     "description": new_planet.description,
+    #     "atmosphere" : new_planet.atmosphere
+    # }
+    return new_planet.to_dict(), 201
 
 
-@Planets_bp.get("")
+@bp.get("")
 def get_all_planets():
     query = db.select(Planets)
     
@@ -47,12 +45,7 @@ def get_all_planets():
     Planets_response = []
     for Planet in planets:
         Planets_response.append(
-                {
-                    "id": Planet.id,
-                    "name": Planet.name,
-                    "description": Planet.description,
-                    "atmosphere": Planet.atmosphere
-                }
+                Planet.to_dict()
             )
     return Planets_response
 
@@ -76,20 +69,20 @@ def validate_planet(id):
     # response = {"message": f"planet {id} not found"}
     # abort(make_response(response, 404))
     
-@Planets_bp.get("/<planet_id>")
-def get_one_planet(planet_id):
-    planet = validate_planet(planet_id)
+@bp.get("/<id>")
+def get_one_planet(id):
+    planet = validate_model(Planets, id)
 
-    return {
-        "id": planet.id,
-        "name": planet.name,
-        "description": planet.description,
-        "atmosphere": planet.atmosphere
-    }
+    return planet.to_dict()
+    #    { "id": planet.id,
+    #     "name": planet.name,
+    #     "description": planet.description,
+    #     "atmosphere": planet.atmosphere
+    # }
 
-@Planets_bp.put("/<id>")
+@bp.put("/<id>")
 def replace_planet(id):
-    planet = validate_planet(id)
+    planet = validate_model(Planets, id)
 
     request_body = request.get_json()
     planet.name = request_body["name"]
@@ -99,9 +92,9 @@ def replace_planet(id):
     db.session.commit()
     return Response(status = 204 , mimetype = "application/json")
 
-@Planets_bp.delete("/<id>")
+@bp.delete("/<id>")
 def delete_planet(id):
-    planet = validate_planet(id)
+    planet = validate_model(Planets, id)
 
     db.session.delete(planet)
     db.session.commit()
